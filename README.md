@@ -1,106 +1,108 @@
-# Step for the Tutorial
+# k8s-elk-stack
 
-### pre-required things:
-</br>
+This repository contains the Kubernetes manifests and configurations to deploy the **ELK Stack (Elasticsearch, Kibana)** along with **Filebeat** on **Amazon EKS**. This setup enables centralized logging by collecting logs from all pods, containers, and nodes inside your EKS cluster, and visualizing them in Kibana.
 
+---
 
-Create a IAM User -> With Policies as below:
-</br>
-	AdministratorAccess, AmazonEKSClusterPolicy
- 
- </br>
-  Then Click on User(new) which you just created now -> and click on Security Credentials -> Click on " Create access key "
- </br> 
-  -> after Clicking on Create Access Key - It will ask for UseCase
-  </br>
-  -> USE CASE: CLI
-  </br>
-  -> Ignore the next step
-  </br>
-  -> Generate the Keys
-  </br>
-	-> Copy the access key and Secret key before click on finish Button ( as it will not show again after this)
- </br>
+## 📦 Stack Overview
+
+- **Elasticsearch**: Stores and indexes all logs.
+- **Kibana**: Provides a UI for exploring and visualizing logs.
+- **Filebeat**: Runs as a DaemonSet on all EKS worker nodes to collect logs and send them directly to Elasticsearch.
+
+---
+
+## 🧱 Architecture
+
++----------------+ +------------+ +------------------+ +-------------+ | EKS Cluster | --> | Filebeat | --> | Elasticsearch | --> | Kibana | | (Pods, Nodes) | | (DaemonSet)| | (StatefulSet) | | (Deployment)| +----------------+ +------------+ +------------------+ +-------------+
 
 
-  
-  Launching the Ec2 - ubuntu instance  </br>
-  
-  
-   ####  installation of AWS CLI  #######
-   </br>
-  https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html
-   </br>
-  sudo apt update
- </br>
-	curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
- </br>
-	sudo apt install unzip
-   </br>
-	unzip awscliv2.zip
+- Filebeat tails logs from `/var/log/containers/` and system logs.
+- Logs are directly shipped to Elasticsearch.
+- Kibana offers a dashboard to search, filter, and visualize the logs.
 
- </br>
-	sudo ./aws/install
-	 </br>
-	aws --version
-  
-   </br>
-## Install eksctl 
- </br>
-curl --silent --location "https://github.com/weaveworks/eksctl/releases/latest/download/eksctl_$(uname -s)_amd64.tar.gz" | tar xz -C /tmp
- </br>
-sudo mv /tmp/eksctl /usr/local/bin
- </br>
-eksctl version
- </br>
-#######################################################################################################################################################################
-   </br>
-  >> aws configure with access key and secret key along with region (us-east-1 / mumbai / ap-south-1)
- </br>
-	>> aws configure </br>
-  >> access key </br>
-  >> secret key </br>
-  >> region </br>
-  >> json </br>
-  
-  ########################################################################################################################################################################
- </br>
- 
-###################################    installing k8s client (kubectl):     ################################################################################################
+---
 
-installing k8s client (kubectl): </br>
+## 📂 Folder Structure
 
-curl -O https://s3.us-west-2.amazonaws.com/amazon-eks/1.30.2/2024-07-12/bin/linux/amd64/kubectl </br>
->> curl get from web - the package of eks - from aws release </br>
+```bash
+k8s-elk-stack/
+├── elasticsearch/
+│   └── elasticsearch-statefulset.yaml
+├── kibana/
+│   └── kibana-deployment.yaml
+├── filebeat/
+│   ├── filebeat-config.yaml
+│   └── filebeat-daemonset.yaml
+├── namespace.yaml
+└── README.md
+```
+---
 
-  curl -O https://s3.us-west-2.amazonaws.com/amazon-eks/1.30.2/2024-07-12/bin/linux/amd64/kubectl.sha256 </br>
->> curl get from web - the package of eks - from aws release(with production Stack) </br>
- </br>
-sha256sum -c kubectl.sha256 </br>
->> do a check - weather it is sha256 verified package or not </br>
+## 🚀 Deployment Steps
 
-openssl sha1 -sha256 kubectl </br>
+Set up EKS cluster (if not already done).
 
-chmod +x ./kubectl </br>
->> add the execute permission for kubectl package </br>
-
-mkdir -p $HOME/bin && cp ./kubectl $HOME/bin/kubectl && export PATH=$HOME/bin:$PATH </br>
->> assigning the package of kubectl in the bin / directory as ubuntu can identify the k8s package </br>
-
-kubectl version --client </br>
->> verifying the installation </br>
+Clone this repository:
 
 
+git clone https://github.com/ashreesee/k8s-elk-stack.git
+cd k8s-elk-stack
+Apply the Kubernetes namespace (if using a custom namespace):
 
 
+kubectl apply -f namespace.yaml
+Deploy Elasticsearch:
+kubectl apply -f elasticsearch/elasticsearch-statefulset.yaml
+Deploy Kibana:
+kubectl apply -f kibana/kibana-deployment.yaml
+Deploy Filebeat:
+kubectl apply -f filebeat/filebeat-config.yaml
+kubectl apply -f filebeat/filebeat-daemonset.yaml
 
-###################################    Cluster Creation EKS with ManagedNode Group in aws eks :     ################################################################################################
-  
-eksctl create cluster --name my-testcluster --region us-east-1 --nodes 3 --node-type t3.medium </br>
->> taking 5-10mins to perform the thing </br>
->> while above command is executing -  we can take a look in the cloudfomration portal - so that the things are in progress / or not! </br>
- </br>
->> cost optimized commands for cluster creation </br>
->>>>>> eksctl create cluster --name my-cluster --region us-east-1 --nodes 2 --node-type t2.micro </br>
- </br>
+🔍 Accessing Kibana
+To access the Kibana dashboard locally:
 
+kubectl port-forward service/kibana 5601
+Then open: http://localhost:5601
+---
+## 📑 What’s Being Collected?
+Filebeat automatically collects:
+
+Application container logs (/var/log/containers/*.log)
+
+System logs from Kubernetes components like kubelet, kube-proxy, etc.
+
+Node-level logs
+
+These are indexed in Elasticsearch and made queryable in Kibana.
+---
+## 📈 Using Kibana
+Go to the "Discover" tab to browse logs.
+
+Use KQL (Kibana Query Language) to filter and search.
+
+Create visualizations and dashboards for error rates, app logs, etc.
+
+Example query to find all error logs:
+
+pgsql
+Copy
+Edit
+log.level: "error"
+---
+## ✅ Requirements
+A running Amazon EKS cluster
+
+kubectl configured to access the cluster
+
+Sufficient node resources for Elasticsearch (CPU/memory/disk)
+---
+## 🔧 Future Improvements
+ Add Persistent Volume Claims (PVCs) for Elasticsearch
+
+ Configure Ingress or LoadBalancer for Kibana access
+
+ Add alerting with Watcher or Kibana alerts
+
+ Pre-configure Kibana dashboards and index patterns
