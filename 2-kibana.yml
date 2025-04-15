@@ -4,7 +4,7 @@ metadata:
   name: kibana-config
 data:
   kibana.yml: |
-    elasticsearch.hosts: ["http://<ELASTICSEARCH-IP-ADDRESS>:9200"]
+    elasticsearch.hosts: ["http://192.168.9.125:9200"]
     server.host: "0.0.0.0"
     server.shutdownTimeout: "5s"
     monitoring.ui.container.elasticsearch.enabled: true
